@@ -7,17 +7,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
     steps:
       - name: Скачать файлы проекта
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Установить Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
 
       - name: Установить Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -36,17 +38,47 @@ jobs:
         run: npx --yes @capacitor/assets generate --android
         continue-on-error: true
 
+      - name: Значок для уведомлений и номер версии
+        run: |
+          cp -r android-res/* android/app/src/main/res/
+          # Каждая сборка получает новый номер версии — RuStore требует его для обновлений
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i 's/versionName "[^"]*"/versionName "1.1"/' android/app/build.gradle
+          # Разрешения на уведомления (Android 13+) и их восстановление после перезагрузки телефона
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q POST_NOTIFICATIONS $M || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n</manifest>#' $M
+          grep -q RECEIVE_BOOT_COMPLETED $M || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />\n</manifest>#' $M
+
       - name: Скопировать приложение в Android-проект
         run: npx cap sync android
 
-      - name: Собрать APK
+      - name: Собрать тестовый APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Выложить APK для скачивания
+      - name: Собрать подписанный APK для RuStore
+        if: env.KEYSTORE_BASE64 != ''
+        working-directory: android
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > $RUNNER_TEMP/release.jks
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=$RUNNER_TEMP/release.jks \
+            -Pandroid.injected.signing.store.password="${{ secrets.KEYSTORE_PASSWORD }}" \
+            -Pandroid.injected.signing.key.alias="${{ secrets.KEY_ALIAS }}" \
+            -Pandroid.injected.signing.key.password="${{ secrets.KEYSTORE_PASSWORD }}"
+          rm -f $RUNNER_TEMP/release.jks
+
+      - name: Выложить тестовый APK
         uses: actions/upload-artifact@v4
         with:
-          name: mama-ryadom-apk
+          name: test-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Выложить APK для RuStore
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustore-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: ignore
