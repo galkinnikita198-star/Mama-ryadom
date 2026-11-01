@@ -1,0 +1,9 @@
+{
+  "appId": "ru.mamaryadom.app",
+  "appName": "Мама рядом",
+  "webDir": "www",
+  "backgroundColor": "#FFF7F3",
+  "android": {
+    "allowMixedContent": false
+  }
+}
