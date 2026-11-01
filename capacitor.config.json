@@ -3,7 +3,10 @@
   "appName": "Мама рядом",
   "webDir": "www",
   "backgroundColor": "#FFF7F3",
-  "android": {
-    "allowMixedContent": false
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_moon",
+      "iconColor": "#7B6BC9"
+    }
   }
 }
