@@ -43,7 +43,7 @@ jobs:
           cp -r android-res/* android/app/src/main/res/
           # Каждая сборка получает новый номер версии — RuStore требует его для обновлений
           sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
-          sed -i 's/versionName "[^"]*"/versionName "1.1"/' android/app/build.gradle
+          sed -i 's/versionName "[^"]*"/versionName "1.2"/' android/app/build.gradle
           # Разрешения на уведомления (Android 13+) и их восстановление после перезагрузки телефона
           M=android/app/src/main/AndroidManifest.xml
           grep -q POST_NOTIFICATIONS $M || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n</manifest>#' $M
