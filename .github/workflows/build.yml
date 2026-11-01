@@ -1,0 +1,52 @@
+name: Собрать APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Скачать файлы проекта
+        uses: actions/checkout@v4
+
+      - name: Установить Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Установить Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Установить Capacitor
+        run: npm install
+
+      - name: Подготовить приложение для телефона
+        # В APK не нужен скрипт Telegram — без интернета он только замедлял бы запуск
+        run: sed -i '/telegram-web-app.js/d' www/index.html
+
+      - name: Создать Android-проект
+        run: npx cap add android
+
+      - name: Иконки и заставка
+        run: npx --yes @capacitor/assets generate --android
+        continue-on-error: true
+
+      - name: Скопировать приложение в Android-проект
+        run: npx cap sync android
+
+      - name: Собрать APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Выложить APK для скачивания
+        uses: actions/upload-artifact@v4
+        with:
+          name: mama-ryadom-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
