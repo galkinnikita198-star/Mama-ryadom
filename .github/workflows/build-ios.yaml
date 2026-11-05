@@ -23,7 +23,7 @@ jobs:
         run: sed -i '' '/telegram-web-app.js/d' www/index.html
 
       - name: Создать iOS-проект
-        run: npx cap add ios
+        run: npx cap add ios --packagemanager SPM
 
       - name: Иконки и заставка
         run: npx --yes @capacitor/assets generate --ios
