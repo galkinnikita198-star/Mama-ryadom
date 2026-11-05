@@ -1,0 +1,51 @@
+name: Собрать для iPhone (IPA)
+
+# Запускается вручную: Actions → «Собрать для iPhone (IPA)» → Run workflow
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Скачать файлы проекта
+        uses: actions/checkout@v5
+
+      - name: Установить Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Установить Capacitor
+        run: npm install
+
+      - name: Подготовить приложение для телефона
+        run: sed -i '' '/telegram-web-app.js/d' www/index.html
+
+      - name: Создать iOS-проект
+        run: npx cap add ios
+
+      - name: Иконки и заставка
+        run: npx --yes @capacitor/assets generate --ios
+        continue-on-error: true
+
+      - name: Скопировать приложение в iOS-проект
+        run: npx cap sync ios
+
+      - name: Собрать приложение (без подписи — подпишет Sideloadly)
+        working-directory: ios/App
+        run: |
+          if [ -d App.xcworkspace ]; then TARGET="-workspace App.xcworkspace"; else TARGET="-project App.xcodeproj"; fi
+          xcodebuild $TARGET -scheme App -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build \
+            MARKETING_VERSION=2.0 CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qr mama-ryadom.ipa Payload
+
+      - name: Выложить IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: iphone-ipa
+          path: ios/App/mama-ryadom.ipa
